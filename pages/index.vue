@@ -12,34 +12,60 @@
     <Trend
       color="green"
       title="Income"
-      :amount="4000"
+      :amount="totalIncome"
       :last-amount="5000"
-      :oading="false"
+      :loading="status === 'pending'"
     />
     <Trend
       color="red"
       title="Expense"
-      :amount="4000"
+      :amount="totalExpenses"
       :last-amount="2000"
-      :loading="false"
+      :loading="status === 'pending'"
     />
     <Trend
       color="green"
       title="Investment"
       :amount="4000"
       :last-amount="3000"
-      :loading="false"
+      :loading="status === 'pending'"
     />
     <Trend
       color="red"
       title="Saving"
       :amount="4000"
       :last-amount="6000"
-      :loading="false"
+      :loading="status === 'pending'"
     />
   </section>
 
-  <section>
+  <section class="flex justify-between mb-10">
+    <div>
+      <h2 class="text-2xl font-extrabold">Transactions</h2>
+      <div class="text-gray-500 dark:text-gray-400">
+        You have {{ incomeCount }} incomes and {{ expenseCount }} expenses this
+        period
+      </div>
+    </div>
+    <div>
+      <UModal v-model="isOpen">
+        <UCard>
+          <template #header> Add Transaction </template>
+
+          <Placeholder class="h-32" />
+        </UCard>
+      </UModal>
+      <UButton
+        icon="i-heroicons-plus-circle"
+        color="white"
+        variant="solid"
+        label="Add"
+        @click="isOpen = true"
+      ></UButton>
+    </div>
+  </section>
+
+  <section v-if="status !== 'pending'">
     <div
       v-for="(transactionsOnDay, date) in transactionsGroupedByDate"
       :key="date"
@@ -49,27 +75,47 @@
         v-for="transaction in transactionsOnDay"
         :key="transaction.id"
         :transaction="transaction"
+        @deleted="hanleDeleteTransaction"
       />
     </div>
+  </section>
+
+  <section v-else>
+    <USkeleton class="h-8 w-full mb-2" v-for="i in 4" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { transactionViewOptions } from "~~/constants";
 
+const isOpen = ref(false);
 const selectedView = ref(transactionViewOptions[1]);
 const transactions = ref<any[] | null>([]);
 const supabase = useSupabaseClient();
 
-const { data, pending } = await useAsyncData("transactions", async () => {
-  const { data, error } = await supabase.from("transactions").select();
-  console.log(data);
+const { data, status, refresh } = await useAsyncData(
+  "transactions",
+  async () => {
+    const { data, error } = await supabase.from("transactions").select();
 
-  if (error) return [];
-  return data;
-});
+    if (error) return [];
+    return data;
+  }
+);
 
 transactions.value = data.value;
+
+const incomeCount = computed(() => {
+  return transactions.value?.filter((transaction) => {
+    return transaction.type === "Income";
+  }).length;
+});
+
+const expenseCount = computed(() => {;
+  return transactions.value?.filter((transaction) => {
+    return transaction.type === "Expenses";
+  }).length;
+});
 
 const transactionsGroupedByDate = computed(() => {
   let grouped = {};
@@ -87,7 +133,22 @@ const transactionsGroupedByDate = computed(() => {
   return grouped;
 });
 
-console.log(transactionsGroupedByDate.value);
+async function hanleDeleteTransaction() {
+  await refresh();
+  transactions.value = data.value;
+}
+
+const totalIncome = ref(0);
+const totalExpenses = ref(0);
+
+const { data: newData } = await useFetch(`/api/getTotalAmount`, {
+  params: { year: 2024, month: 9 },
+});
+
+if (newData.value) {
+  totalIncome.value = newData.value[0]?.total_income || 0;
+  totalExpenses.value = newData.value[0]?.total_expenses || 0;
+}
 </script>
 
 <style scoped></style>
