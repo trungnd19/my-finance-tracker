@@ -48,13 +48,7 @@
       </div>
     </div>
     <div>
-      <UModal v-model="isOpen">
-        <UCard>
-          <template #header> Add Transaction </template>
-
-          <Placeholder class="h-32" />
-        </UCard>
-      </UModal>
+      <TransactionModal v-model="isOpen" />
       <UButton
         icon="i-heroicons-plus-circle"
         color="white"
@@ -86,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import TransactionModal from "~/components/TransactionModal.vue";
 import { transactionViewOptions } from "~~/constants";
 
 const isOpen = ref(false);
@@ -96,7 +91,10 @@ const supabase = useSupabaseClient();
 const { data, status, refresh } = await useAsyncData(
   "transactions",
   async () => {
-    const { data, error } = await supabase.from("transactions").select();
+    const { data, error } = await supabase
+      .from("transactions")
+      .select()
+      .order("created_at", { ascending: false });
 
     if (error) return [];
     return data;
@@ -111,7 +109,7 @@ const incomeCount = computed(() => {
   }).length;
 });
 
-const expenseCount = computed(() => {;
+const expenseCount = computed(() => {
   return transactions.value?.filter((transaction) => {
     return transaction.type === "Expenses";
   }).length;

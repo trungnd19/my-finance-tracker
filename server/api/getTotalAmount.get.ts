@@ -24,8 +24,6 @@ export default defineEventHandler(async (event) => {
     month: Number(month),
   });
 
-  console.log(data, '111111');
-
   if (error) {
     return { error: "Error fetching data" };
   }
